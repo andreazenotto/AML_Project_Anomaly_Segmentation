@@ -13,8 +13,7 @@ from sklearn.metrics import roc_auc_score, roc_curve, auc, precision_recall_curv
 def fpr_at_95_tpr(val_out, val_label):
     fpr, tpr, thresholds = roc_curve(val_label, val_out)
     idx = np.argmax(tpr >= 0.95)
-    fpr95 = fpr[idx]
-    return fpr95
+    return fpr[idx]
 
 seed = 42
 
@@ -57,7 +56,7 @@ def main():
         open('results.txt', 'w').close()
     file = open('results.txt', 'a')
 
-    modelpath = args.loadDir + args.loadModel
+    modelpath = 'AML_Project_Anomaly_Segmentation/eval/' + args.loadModel
     weightspath = args.loadDir + args.loadWeights
 
     print ("Loading model: " + modelpath)
@@ -95,7 +94,7 @@ def main():
         if args.method == 'msp':
             result /= args.temp
             softmax_probs = torch.nn.functional.softmax(result, dim=1) # Softmax sulle predizioni del modello
-            msp = torch.max(softmax_probs, dim=1)[0].cpu().numpy() # Calcolo MSP
+            msp = torch.max(softmax_probs, dim=1)[0].cpu().numpy().squeeze() # Calcolo MSP
             anomaly_result = 1.0 - msp # Anomaly score basato su MSP
         elif args.method == 'ml':
             pass
