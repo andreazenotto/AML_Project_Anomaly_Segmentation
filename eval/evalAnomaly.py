@@ -150,6 +150,10 @@ def main():
     val_out = np.concatenate((ind_out, ood_out))
     val_label = np.concatenate((ind_label, ood_label))
 
+    print("val_label:", val_label)
+    print("val_out:", val_out)
+    print("Shapes:", val_label.shape, val_out.shape)
+
     prc_auc = average_precision_score(val_label, val_out)
     fpr = fpr_at_95_tpr(val_out, val_label)
 
