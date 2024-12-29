@@ -1,16 +1,20 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import os
-import cv2
 import glob
 import torch
 import random
 from PIL import Image
 import numpy as np
-from erfnet import ERFNet
+from trained_models.erfnet import ERFNet
 import os.path as osp
 from argparse import ArgumentParser
-from ood_metrics import fpr_at_95_tpr, calc_metrics, plot_roc, plot_pr,plot_barcode
 from sklearn.metrics import roc_auc_score, roc_curve, auc, precision_recall_curve, average_precision_score
+
+def fpr_at_95_tpr(val_out, val_label):
+    fpr, tpr, thresholds = roc_curve(val_label, val_out)
+    idx = np.argmax(tpr >= 0.95)
+    fpr95 = fpr[idx]
+    return fpr95
 
 seed = 42
 
@@ -29,7 +33,7 @@ def main():
     parser = ArgumentParser()
     parser.add_argument(
         "--input",
-        default="/home/shyam/Mask2Former/unk-eval/RoadObsticle21/images/*.webp",
+        default="../datasets/RoadAnomaly21/images/*.png",
         nargs="+",
         help="A list of space separated input images; "
         "or a single glob pattern such as 'directory/*.jpg'",
@@ -42,6 +46,9 @@ def main():
     parser.add_argument('--num-workers', type=int, default=4)
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--cpu', action='store_true')
+    parser.add_argument('--method', default="msp")
+    parser.add_argument('--temp', type=int, default=1)
+    
     args = parser.parse_args()
     anomaly_score_list = []
     ood_gts_list = []
@@ -84,11 +91,21 @@ def main():
         images = images.permute(0,3,1,2)
         with torch.no_grad():
             result = model(images)
-        anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)            
+
+        if args.method == 'msp':
+            result /= args.temp
+            softmax_probs = torch.nn.functional.softmax(result, dim=1) # Softmax sulle predizioni del modello
+            msp = torch.max(softmax_probs, dim=1)[0].cpu().numpy() # Calcolo MSP
+            anomaly_result = 1.0 - msp # Anomaly score basato su MSP
+        elif args.method == 'ml':
+            pass
+        elif args.method == 'me':
+            pass
+
         pathGT = path.replace("images", "labels_masks")                
         if "RoadObsticle21" in pathGT:
            pathGT = pathGT.replace("webp", "png")
-        if "fs_static" in pathGT:
+        if "FS_Static" in pathGT:
            pathGT = pathGT.replace("jpg", "png")                
         if "RoadAnomaly" in pathGT:
            pathGT = pathGT.replace("jpg", "png")  
@@ -98,7 +115,7 @@ def main():
 
         if "RoadAnomaly" in pathGT:
             ood_gts = np.where((ood_gts==2), 1, ood_gts)
-        if "LostAndFound" in pathGT:
+        if "L&F" in pathGT:
             ood_gts = np.where((ood_gts==0), 255, ood_gts)
             ood_gts = np.where((ood_gts==1), 0, ood_gts)
             ood_gts = np.where((ood_gts>1)&(ood_gts<201), 1, ood_gts)

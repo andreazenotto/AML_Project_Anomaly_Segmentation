@@ -19,7 +19,7 @@ from torchvision.transforms import Compose, CenterCrop, Normalize, Resize
 from torchvision.transforms import ToTensor, ToPILImage
 
 from dataset import cityscapes
-from erfnet import ERFNet
+from trained_models.erfnet import ERFNet
 from transform import Relabel, ToLabel, Colorize
 from iouEval import iouEval, getColorEntry
 
@@ -89,8 +89,16 @@ def main(args):
         inputs = Variable(images)
         with torch.no_grad():
             outputs = model(inputs)
-
-        iouEvalVal.addBatch(outputs.max(1)[1].unsqueeze(1).data, labels)
+        
+        if args.method == 'msp':
+            outputs /= args.temp
+            softmax_outputs = F.softmax(outputs, dim=1)
+            iouEvalVal.addBatch(softmax_outputs.max(1)[1].unsqueeze(1).data, labels)
+        elif args.method == 'ml':
+            pass
+        elif args.method == 'me':
+            pass
+        
 
         filenameSave = filename[0].split("leftImg8bit/")[1] 
 
@@ -141,9 +149,11 @@ if __name__ == '__main__':
     parser.add_argument('--loadWeights', default="erfnet_pretrained.pth")
     parser.add_argument('--loadModel', default="erfnet.py")
     parser.add_argument('--subset', default="val")  #can be val or train (must have labels)
-    parser.add_argument('--datadir', default="/home/shyam/ViT-Adapter/segmentation/data/cityscapes/")
+    parser.add_argument('--datadir', default="../datasets/ciyscapess/")
     parser.add_argument('--num-workers', type=int, default=4)
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--cpu', action='store_true')
+    parser.add_argument('--method', default="msp")
+    parser.add_argument('--temp', type=int, default=1)
 
     main(parser.parse_args())
