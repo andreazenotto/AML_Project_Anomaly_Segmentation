@@ -33,7 +33,7 @@ def main():
     parser = ArgumentParser()
     parser.add_argument(
         "--input",
-        default="../datasets/RoadAnomaly21/images/*.png",
+        default="AML_Project_Anomaly_Segmentation/datasets/RoadAnomaly21/images/*.png",
         nargs="+",
         help="A list of space separated input images; "
         "or a single glob pattern such as 'directory/*.jpg'",
