@@ -5,7 +5,7 @@ import torch
 import random
 from PIL import Image
 import numpy as np
-from trained_models.erfnet import ERFNet
+from erfnet import ERFNet
 import os.path as osp
 from argparse import ArgumentParser
 from sklearn.metrics import roc_auc_score, roc_curve, auc, precision_recall_curve, average_precision_score
