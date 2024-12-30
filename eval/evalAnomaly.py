@@ -112,12 +112,16 @@ def main():
         mask = Image.open(pathGT)
         ood_gts = np.array(mask)
 
-        if "RoadAnomaly21" or "RoadObsticle21" in pathGT:
+        if "RoadObsticle21" in pathGT:
             ood_gts = ood_gts[:,:,1]
             ood_gts = np.where((ood_gts==0)|(ood_gts==102), 1, ood_gts)
-        elif "RoadAnomaly" in pathGT:
-            ood_gts = np.where((ood_gts==2), 1, ood_gts)
-        elif "FS" in pathGT:
+        if "RoadAnomaly" in pathGT:
+            if "RoadAnomaly21" in pathGT:
+                ood_gts = ood_gts[:,:,1]
+                ood_gts = np.where((ood_gts==0)|(ood_gts==102), 1, ood_gts)
+            else:
+                ood_gts = np.where((ood_gts==2), 1, ood_gts)
+        if "FS" in pathGT:
             ood_gts = np.where((ood_gts==255), 1, ood_gts)
 
         if 1 not in np.unique(ood_gts):
