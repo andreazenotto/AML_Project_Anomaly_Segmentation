@@ -10,10 +10,19 @@ import os.path as osp
 from argparse import ArgumentParser
 from sklearn.metrics import roc_auc_score, roc_curve, auc, precision_recall_curve, average_precision_score
 
-def fpr_at_95_tpr(val_out, val_label):
-    fpr, tpr, thresholds = roc_curve(val_label, val_out)
-    idx = np.argmax(tpr >= 0.95)
-    return fpr[idx]
+def fpr_at_95_tpr(preds, labels, pos_label=1):
+    fpr, tpr, _ = roc_curve(labels, preds, pos_label=pos_label)
+
+    if all(tpr < 0.95):
+        # No threshold allows TPR >= 0.95
+        return 0
+    elif all(tpr >= 0.95):
+        # All thresholds allow TPR >= 0.95, so find lowest possible FPR
+        idxs = [i for i, x in enumerate(tpr) if x >= 0.95]
+        return min(map(lambda idx: fpr[idx], idxs))
+    else:
+        # Linear interp between values to get FPR at TPR == 0.95
+        return np.interp(0.95, tpr, fpr)
 
 seed = 42
 
