@@ -25,6 +25,15 @@ NUM_CLASSES = 20
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = True
 
+def get_entropy(probs):
+    """
+    Calcola l'entropia per pixel basata sulle probabilità softmax.
+    Entropia = -sum(p(x) * log(p(x)))
+    """
+    log_probs = torch.log(probs + 1e-8)  # Aggiungiamo un piccolo epsilon per evitare log(0)
+    entropy = -torch.sum(probs * log_probs, dim=1)  # Entropia per ogni pixel
+    return entropy
+
 def main():
     parser = ArgumentParser()
     parser.add_argument(
@@ -42,6 +51,7 @@ def main():
     parser.add_argument('--num-workers', type=int, default=4)
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--cpu', action='store_true')
+    parser.add_argument('--anomaly_metric', choices=['msp', 'entropy'], default='msp', help="Choose the anomaly metric: 'msp' for Maximum Softmax Probability or 'entropy' for Maximum Entropy")
     args = parser.parse_args()
     anomaly_score_list = []
     ood_gts_list = []
@@ -84,7 +94,19 @@ def main():
         images = images.permute(0,3,1,2)
         with torch.no_grad():
             result = model(images)
-        anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)            
+
+        if args.anomaly_metric == 'msp':
+            # Maximum Softmax Probability
+            anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
+        
+        elif args.anomaly_metric == 'entropy':
+            # Maximum Entropy
+            probs = torch.nn.functional.softmax(result, dim=1)
+            entropy_result = get_entropy(probs).squeeze(0).data.cpu().numpy()
+            anomaly_result = entropy_result  # Usiamo l'entropia come punteggio di anomalia
+
+        # anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)     
+
         pathGT = path.replace("images", "labels_masks")                
         if "RoadObsticle21" in pathGT:
            pathGT = pathGT.replace("webp", "png")
