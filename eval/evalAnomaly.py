@@ -112,17 +112,10 @@ def main():
         mask = Image.open(pathGT)
         ood_gts = np.array(mask)
 
-        if "RoadAnomaly" in pathGT:
-            ood_gts = np.where((ood_gts==2), 1, ood_gts)
-        if "L&F" in pathGT:
-            ood_gts = np.where((ood_gts==0), 255, ood_gts)
-            ood_gts = np.where((ood_gts==1), 0, ood_gts)
-            ood_gts = np.where((ood_gts>1)&(ood_gts<201), 1, ood_gts)
-
-        if "Streethazard" in pathGT:
-            ood_gts = np.where((ood_gts==14), 255, ood_gts)
-            ood_gts = np.where((ood_gts<20), 0, ood_gts)
-            ood_gts = np.where((ood_gts==255), 1, ood_gts)
+        if "RoadAnomaly" or "RoadObsticle21" in pathGT:
+          ood_gts = np.where((ood_gts==2), 1, ood_gts)
+        if "FS" in pathGT:
+          ood_gts = np.where((ood_gts==255), 1, ood_gts)
 
         if 1 not in np.unique(ood_gts):
             continue              
