@@ -94,7 +94,7 @@ def main():
     model.eval()
     
     for path in glob.glob(os.path.expanduser(str(args.input[0]))):
-        print(path)
+        # print(path)
         images = torch.from_numpy(np.array(Image.open(path).convert('RGB'))).unsqueeze(0).float()
         images = images.permute(0,3,1,2)
         with torch.no_grad():
@@ -164,7 +164,6 @@ def main():
 
     print("val_label:", val_label)
     print("val_out:", val_out)
-    print("Shapes:", val_label.shape, val_out.shape)
 
     prc_auc = average_precision_score(val_label, val_out)
     fpr = fpr_at_95_tpr(val_out, val_label)
