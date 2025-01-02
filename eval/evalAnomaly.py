@@ -127,11 +127,11 @@ def main():
 
         if "RoadObsticle21" in pathGT:
             ood_gts = ood_gts[:,:,1]
-            ood_gts = np.where((ood_gts==0)|(ood_gts==102), 1, ood_gts)
+            ood_gts = np.where((ood_gts==102), 1, ood_gts)
         if "RoadAnomaly" in pathGT:
             if "RoadAnomaly21" in pathGT:
                 ood_gts = ood_gts[:,:,1]
-                ood_gts = np.where((ood_gts==0)|(ood_gts==102), 1, ood_gts)
+                ood_gts = np.where((ood_gts==102), 1, ood_gts)
             else:
                 ood_gts = np.where((ood_gts==2), 1, ood_gts)
         if "FS" in pathGT:
