@@ -107,7 +107,7 @@ def main():
             anomaly_result = 1.0 - msp # Anomaly score basato su MSP
         elif args.method == 'ml':
             max_logit, _ = torch.max(result, dim=1) # computing max logit for each pixel
-            anomaly_result = -max_logit.cpu().numpy().squeeze() # lower logits to higher anomaly 
+            anomaly_result = max_logit.cpu().numpy().squeeze() # lower logits to higher anomaly 
         elif args.method == 'me':
             probs = torch.nn.functional.softmax(result, dim=1)
             log_probs = torch.log(probs + 1e-8)
