@@ -149,7 +149,7 @@ if __name__ == '__main__':
     parser.add_argument('--loadWeights', default="erfnet_pretrained.pth")
     parser.add_argument('--loadModel', default="erfnet.py")
     parser.add_argument('--subset', default="val")  #can be val or train (must have labels)
-    parser.add_argument('--datadir', default="AML_Project_Anomaly_Segmentation/datasets/ciyscapes/")
+    parser.add_argument('--datadir', default="AML_Project_Anomaly_Segmentation/datasets/cityscapes/")
     parser.add_argument('--num-workers', type=int, default=4)
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--cpu', action='store_true')
