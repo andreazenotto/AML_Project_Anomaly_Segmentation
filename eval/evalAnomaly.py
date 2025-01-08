@@ -55,7 +55,7 @@ def main():
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--cpu', action='store_true')
     parser.add_argument('--method', default="msp")
-    parser.add_argument('--temp', type=int, default=1)
+    parser.add_argument('--temp', type=float, default=1)
     
     args = parser.parse_args()
     anomaly_score_list = []
