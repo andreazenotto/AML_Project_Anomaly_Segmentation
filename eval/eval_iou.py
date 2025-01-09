@@ -95,24 +95,14 @@ def main(args):
             softmax_outputs = F.softmax(outputs, dim=1)
             iouEvalVal.addBatch(softmax_outputs.max(1)[1].unsqueeze(1).data, labels)
         elif args.method == 'ml':
-            pass
-        elif args.method == 'me':
-            pass
-
-        if args.method == 'msp':
-            result /= args.temp
-            softmax_probs = torch.nn.functional.softmax(result, dim=1) # Softmax sulle predizioni del modello
-            msp = torch.max(softmax_probs, dim=1)[0].cpu().numpy().squeeze() # Calcolo MSP
-            anomaly_result = 1.0 - msp # Anomaly score basato su MSP
-        elif args.method == 'ml':
-            max_logit, _ = torch.max(result, dim=1) # computing max logit for each pixel
+            max_logit, _ = torch.max(outputs, dim=1) # computing max logit for each pixel
             iouEvalVal.addBatch(max_logit.max(1)[1].unsqueeze(1).data, labels)
         elif args.method == 'me':
-            probs = torch.nn.functional.softmax(result, dim=1)
+            probs = torch.nn.functional.softmax(outputs, dim=1)
             log_probs = torch.log(probs + 1e-8)
             entropy = -torch.sum(probs * log_probs, dim=1)
             iouEvalVal.addBatch(entropy.max(1)[1].unsqueeze(1).data, labels)
-        
+
 
         filenameSave = filename[0].split("leftImg8bit/")[1] 
 
@@ -168,6 +158,6 @@ if __name__ == '__main__':
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--cpu', action='store_true')
     parser.add_argument('--method', default="msp")
-    parser.add_argument('--temp', type=int, default=1)
+    parser.add_argument('--temp', type=float, default=1)
 
     main(parser.parse_args())
