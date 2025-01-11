@@ -112,7 +112,7 @@ def main():
             probs = torch.nn.functional.softmax(result, dim=1)
             log_probs = torch.log(probs + 1e-8)
             entropy = -torch.sum(probs * log_probs, dim=1)
-            anomaly_result = entropy.squeeze(0).data.cpu().numpy()
+            anomaly_result = entropy.data.cpu().numpy().squeeze()
 
         pathGT = path.replace("images", "labels_masks")                
         if "RoadObsticle21" in pathGT:
