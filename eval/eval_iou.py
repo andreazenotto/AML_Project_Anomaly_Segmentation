@@ -95,14 +95,12 @@ def main(args):
             softmax_outputs = F.softmax(outputs, dim=1)
             iouEvalVal.addBatch(softmax_outputs.max(1)[1].unsqueeze(1).data, labels)
         elif args.method == 'ml':
-            max_logit, _ = torch.max(outputs, dim=1) # computing max logit for each pixel
-            iouEvalVal.addBatch(max_logit.max(1)[1].unsqueeze(1).data, labels)
+            iouEvalVal.addBatch(torch.max(outputs, dim=1)[1].unsqueeze(1).data, labels)
         elif args.method == 'me':
             probs = torch.nn.functional.softmax(outputs, dim=1)
             log_probs = torch.log(probs + 1e-8)
             entropy = -torch.sum(probs * log_probs, dim=1)
-            iouEvalVal.addBatch(entropy.max(1)[1].unsqueeze(1).data, labels)
-
+            iouEvalVal.addBatch(entropy.unsqueeze(1).data, labels)
 
         filenameSave = filename[0].split("leftImg8bit/")[1] 
 
