@@ -147,7 +147,7 @@ def train(args, model, enc=False):
     criterion = CrossEntropyLoss2d(weight)
     print(type(criterion))
 
-    savedir = f'../save/{args.savedir}'
+    savedir = args.savedir
 
     if (enc):
         automated_log_path = savedir + "/automated_log_encoder.txt"
@@ -230,6 +230,8 @@ def train(args, model, enc=False):
             #print("targets", np.unique(targets[:, 0].cpu().data.numpy()))
 
             optimizer.zero_grad()
+            if args.model == "bisenet":
+                outputs = outputs[1]
             loss = criterion(outputs, targets[:, 0])
             loss.backward()
             optimizer.step()
@@ -293,6 +295,8 @@ def train(args, model, enc=False):
             targets = Variable(labels, volatile=True)
             outputs = model(inputs, only_encode=enc) 
 
+            if args.model == "bisenet":
+                outputs = outputs[1]
             loss = criterion(outputs, targets[:, 0])
             epoch_loss_val.append(loss.item())
             time_val.append(time.time() - start_time)

@@ -339,7 +339,7 @@ class UpsamplingBottleneck(nn.Module):
         return self.out_activation(out)
 
 
-class ENet(nn.Module):
+class Net(nn.Module):
     def __init__(self, num_classes, encoder_relu=False, decoder_relu=True):
         super().__init__()
 
@@ -444,7 +444,7 @@ class ENet(nn.Module):
             padding=1,
             bias=False)
 
-    def forward(self, x):
+    def forward(self, x, only_encode=False): # only_encode is used only for coherence with erfnet.py
         # Initial block
         input_size = x.size()
         x = self.initial_block(x)

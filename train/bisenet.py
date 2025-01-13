@@ -269,10 +269,10 @@ class CustomArgMax(torch.autograd.Function):
         return g.op('CustomArgMax', feat_out, dim_i=dim)
 
 
-class BiSeNetV1(nn.Module):
+class Net(nn.Module):
 
     def __init__(self, n_classes, aux_mode='train', *args, **kwargs):
-        super(BiSeNetV1, self).__init__()
+        super(Net, self).__init__()
         self.cp = ContextPath()
         self.sp = SpatialPath()
         self.ffm = FeatureFusionModule(256, 256)
@@ -283,7 +283,7 @@ class BiSeNetV1(nn.Module):
             self.conv_out32 = BiSeNetOutput(128, 64, n_classes, up_factor=16)
         self.init_weight()
 
-    def forward(self, x):
+    def forward(self, x, only_encode=False): # only_encode is used only for coherence with erfnet.py
         H, W = x.size()[2:]
         feat_cp8, feat_cp16 = self.cp(x)
         feat_sp = self.sp(x)
@@ -323,7 +323,7 @@ class BiSeNetV1(nn.Module):
 
 
 if __name__ == "__main__":
-    net = BiSeNetV1(19)
+    net = Net(19)
     net.cuda()
     net.eval()
     in_ten = torch.randn(16, 3, 640, 480).cuda()
