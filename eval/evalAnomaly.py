@@ -5,7 +5,7 @@ import torch
 import random
 from PIL import Image
 import numpy as np
-from erfnet import ERFNet
+import importlib
 import os.path as osp
 from argparse import ArgumentParser
 from sklearn.metrics import roc_auc_score, roc_curve, auc, precision_recall_curve, average_precision_score
@@ -56,6 +56,7 @@ def main():
     parser.add_argument('--cpu', action='store_true')
     parser.add_argument('--method', default="msp")
     parser.add_argument('--temp', type=float, default=1)
+    parser.add_argument('--void', action='store_true')
     
     args = parser.parse_args()
     anomaly_score_list = []
@@ -71,7 +72,8 @@ def main():
     print ("Loading model: " + modelpath)
     print ("Loading weights: " + weightspath)
 
-    model = ERFNet(NUM_CLASSES)
+    model_file = importlib.import_module(args.loadModel[:-3])
+    model = model_file.Net(NUM_CLASSES)
 
     if (not args.cpu):
         model = torch.nn.DataParallel(model).cuda()
@@ -82,6 +84,8 @@ def main():
             if name not in own_state:
                 if name.startswith("module."):
                     own_state[name.split("module.")[-1]].copy_(param)
+                elif args.loadModel != "erfnet.py":
+                    own_state["module."+name].copy_(param)
                 else:
                     print(name, " not loaded")
                     continue
@@ -99,8 +103,12 @@ def main():
         images = images.permute(0,3,1,2)
         with torch.no_grad():
             result = model(images)
+        if args.loadModel == "bisenet.py":
+            result = result[1]
 
-        if args.method == 'msp':
+        if args.void:
+            anomaly_result = -result[:, 19, :, :].cpu().numpy().squeeze()
+        elif args.method == 'msp':
             result /= args.temp
             softmax_probs = torch.nn.functional.softmax(result, dim=1) # Softmax sulle predizioni del modello
             msp = torch.max(softmax_probs, dim=1)[0].cpu().numpy().squeeze() # Calcolo MSP
@@ -127,9 +135,9 @@ def main():
 
         if "RoadAnomaly" in pathGT:
             if "RoadAnomaly21" in pathGT:
-                        ood_gts = np.where((ood_gts==255), 1, ood_gts)
+                ood_gts = np.where((ood_gts==255), 1, ood_gts)
             else:
-                        ood_gts = np.where((ood_gts==2), 1, ood_gts)
+                ood_gts = np.where((ood_gts==2), 1, ood_gts)
         if "FS" in pathGT:
             ood_gts = np.where((ood_gts==255), 1, ood_gts)
 
