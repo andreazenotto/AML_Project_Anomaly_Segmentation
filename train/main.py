@@ -28,6 +28,8 @@ from iouEval import iouEval, getColorEntry
 
 from shutil import copyfile
 
+from losses import IsoMaxPlusLoss, LogitNormLoss, FocalLoss
+
 NUM_CHANNELS = 3
 NUM_CLASSES = 20 #pascal=22, cityscapes=20
 
@@ -144,7 +146,14 @@ def train(args, model, enc=False):
 
     if args.cuda:
         weight = weight.cuda()
-    criterion = CrossEntropyLoss2d(weight)
+    
+    if args.loss == "eim": # Enhanced Isotropy Maximization Loss
+        criterion = IsoMaxPlusLoss()
+    elif args.loss == "ln": # Logit Normalization Loss
+        criterion = LogitNormLoss()
+    else: # Cross Entropy Loss
+        criterion = CrossEntropyLoss2d(weight)
+        
     print(type(criterion))
 
     savedir = args.savedir
@@ -509,5 +518,8 @@ if __name__ == '__main__':
     parser.add_argument('--iouVal', action='store_true', default=True)  
     parser.add_argument('--resume', action='store_true')    #Use this flag to load last checkpoint for training  
     parser.add_argument('--tot-num-epochs', type=int, default=150)
+    parser.add_argument('--loss', default="ce")  #ce: Cross Entropy Loss
 
     main(parser.parse_args())
+
+# python main.py --savedir erfnet_training1 --datadir /home/datasets/cityscapes/ --decoder --pretrainedEncoder "../trained_models/erfnet_encoder_pretrained.pth.tar"
