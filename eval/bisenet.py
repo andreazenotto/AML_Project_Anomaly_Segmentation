@@ -137,6 +137,10 @@ class ContextPath(nn.Module):
 
         feat32_arm = self.arm32(feat32)
         feat32_sum = feat32_arm + avg
+        if feat32_sum.shape[2] == 23:
+            feat32_up = nn.Upsample(size=(45, 80), mode='bilinear', align_corners=False)(feat32_sum)
+        else:
+            feat32_up = self.up32(feat32_sum)
         feat32_up = self.up32(feat32_sum)
         feat32_up = self.conv_head32(feat32_up)
 
