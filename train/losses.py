@@ -11,6 +11,7 @@ class IsoMaxPlusLoss(nn.Module):
         distances = -outputs
         probabilities_for_training = nn.Softmax(dim=1)(-self.entropic_scale * distances)
         probabilities_at_targets = probabilities_for_training[range(distances.size(0)), targets]
+        # probabilities_at_targets = torch.gather(probabilities_for_training, dim=1, targets.unsqueeze(1))
         loss = -torch.log(probabilities_at_targets).mean()
         return loss
         
@@ -22,9 +23,8 @@ class IsoMaxPlusLoss(nn.Module):
 
 class LogitNormLoss(nn.Module):
 
-    def __init__(self, device, t=1.0):
+    def __init__(self, t=0.01):
         super(LogitNormLoss, self).__init__()
-        self.device = device
         self.t = t
 
     def forward(self, outputs, target):
