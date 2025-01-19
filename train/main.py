@@ -151,9 +151,11 @@ def train(args, model, enc=False):
         criterion = IsoMaxPlusLoss()
     elif args.loss == "ln": # Logit Normalization Loss
         criterion = LogitNormLoss()
+    elif args.loss == "fl": # Focal Loss
+        criterion = FocalLoss()
     else: # Cross Entropy Loss
         criterion = CrossEntropyLoss2d(weight)
-        
+
     print(type(criterion))
 
     savedir = args.savedir

@@ -10,8 +10,8 @@ class IsoMaxPlusLoss(nn.Module):
     def forward(self, outputs, targets):
         distances = -outputs
         probabilities_for_training = nn.Softmax(dim=1)(-self.entropic_scale * distances)
-        probabilities_at_targets = probabilities_for_training[range(distances.size(0)), targets]
-        # probabilities_at_targets = torch.gather(probabilities_for_training, dim=1, targets.unsqueeze(1))
+        probabilities_at_targets = torch.gather(probabilities_for_training, 1, targets.unsqueeze(1))
+        probabilities_at_targets = torch.clamp(probabilities_at_targets, min=1e-7)
         loss = -torch.log(probabilities_at_targets).mean()
         return loss
         
@@ -40,7 +40,7 @@ class LogitNormLoss(nn.Module):
 
 class FocalLoss(nn.Module):
 
-    def __init__(self, alpha=0.25, gamma=2, reduction='mean'):
+    def __init__(self, alpha=1, gamma=2, reduction='mean'):
         super(FocalLoss, self).__init__()
         self.alpha = alpha
         self.gamma = gamma
@@ -49,6 +49,7 @@ class FocalLoss(nn.Module):
     def forward(self, outputs, targets):
         outputs = F.softmax(outputs, dim=1)
         targets = F.one_hot(targets, num_classes=outputs.size(1)).float()
+        targets = targets.permute(0,3,1,2)
         p_t = (outputs * targets).sum(dim=1)
         loss = -self.alpha * (1 - p_t)**self.gamma * torch.log(p_t)
         
@@ -60,4 +61,5 @@ class FocalLoss(nn.Module):
             return loss
         
 # References:
+# https://paperswithcode.com/method/focal-loss
 # https://github.com/itakurah/Focal-loss-PyTorch/blob/main/focal_loss.py
