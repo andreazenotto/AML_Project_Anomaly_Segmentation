@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from main import CrossEntropyLoss2d
+
 class IsoMaxPlusLoss(nn.Module):
     def __init__(self, entropic_scale=10.0):
         super(IsoMaxPlusLoss, self).__init__()
@@ -63,3 +65,34 @@ class FocalLoss(nn.Module):
 # References:
 # https://paperswithcode.com/method/focal-loss
 # https://github.com/itakurah/Focal-loss-PyTorch/blob/main/focal_loss.py
+
+# --------------------------------------------------------------------------------------------------- #
+
+class CombinedLoss(nn.Module):
+    def __init__(self, w1=1.0, w2=1.0, w3=1.0, w4=1.0):
+        super(CombinedLoss, self).__init__()
+        self.iso_max = IsoMaxPlusLoss()
+        self.logit_norm = LogitNormLoss()
+        self.focal_loss = FocalLoss()
+        self.cross_entropy_loss = CrossEntropyLoss2d()
+        
+        # Weights for each loss
+        self.w1 = w1
+        self.w2 = w2
+        self.w3 = w3
+        self.w4 = w4
+
+    def forward(self, outputs, targets):
+        loss_iso = self.iso_max(outputs, targets)
+        loss_logit = self.logit_norm(outputs, targets)
+        loss_focal = self.focal_loss(outputs, targets)
+        loss_ce = self.cross_entropy_loss(outputs, targets)
+        
+        # Weighted sum of the losses
+        total_loss = (
+            self.w1 * loss_iso +
+            self.w2 * loss_logit +
+            self.w3 * loss_focal +
+            self.w4 * loss_ce
+        )
+        return total_loss

@@ -28,7 +28,7 @@ from iouEval import iouEval, getColorEntry
 
 from shutil import copyfile
 
-from losses import IsoMaxPlusLoss, LogitNormLoss, FocalLoss
+from losses import IsoMaxPlusLoss, LogitNormLoss, FocalLoss, CombinedLoss
 
 NUM_CHANNELS = 3
 NUM_CLASSES = 20 #pascal=22, cityscapes=20
@@ -153,6 +153,8 @@ def train(args, model, enc=False):
         criterion = LogitNormLoss()
     elif args.loss == "fl": # Focal Loss
         criterion = FocalLoss()
+    elif args.loss == "mix": # Combined Loss
+        criterion = CombinedLoss()
     else: # Cross Entropy Loss
         criterion = CrossEntropyLoss2d(weight)
 
