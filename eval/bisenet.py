@@ -141,12 +141,14 @@ class ContextPath(nn.Module):
             feat32_up = nn.Upsample(size=(45, 80), mode='bilinear', align_corners=False)(feat32_sum)
         else:
             feat32_up = self.up32(feat32_sum)
-        feat32_up = self.up32(feat32_sum)
         feat32_up = self.conv_head32(feat32_up)
 
         feat16_arm = self.arm16(feat16)
         feat16_sum = feat16_arm + feat32_up
-        feat16_up = self.up16(feat16_sum)
+        if feat16_sum.shape[2] == 68:
+            feat16_up = nn.Upsample(size=(135, 240), mode='bilinear', align_corners=False)(feat16_sum)
+        else:
+            feat16_up = self.up16(feat16_sum)
         feat16_up = self.conv_head16(feat16_up)
 
         return feat16_up, feat32_up # x8, x16
