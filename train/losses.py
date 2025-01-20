@@ -2,7 +2,17 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from main import CrossEntropyLoss2d
+class CrossEntropyLoss2d(torch.nn.Module):
+
+    def __init__(self, weight=None):
+        super().__init__()
+
+        self.loss = torch.nn.NLLLoss2d(weight)
+
+    def forward(self, outputs, targets):
+        return self.loss(torch.nn.functional.log_softmax(outputs, dim=1), targets)
+    
+# --------------------------------------------------------------------------------------------------- #
 
 class IsoMaxPlusLoss(nn.Module):
     def __init__(self, entropic_scale=10.0):

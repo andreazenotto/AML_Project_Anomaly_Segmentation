@@ -28,7 +28,7 @@ from iouEval import iouEval, getColorEntry
 
 from shutil import copyfile
 
-from losses import IsoMaxPlusLoss, LogitNormLoss, FocalLoss, CombinedLoss
+from losses import CrossEntropyLoss2d, IsoMaxPlusLoss, LogitNormLoss, FocalLoss, CombinedLoss
 
 NUM_CHANNELS = 3
 NUM_CLASSES = 20 #pascal=22, cityscapes=20
@@ -71,17 +71,6 @@ class MyCoTransform(object):
         target = Relabel(255, 19)(target)
 
         return input, target
-
-
-class CrossEntropyLoss2d(torch.nn.Module):
-
-    def __init__(self, weight=None):
-        super().__init__()
-
-        self.loss = torch.nn.NLLLoss2d(weight)
-
-    def forward(self, outputs, targets):
-        return self.loss(torch.nn.functional.log_softmax(outputs, dim=1), targets)
 
 
 def train(args, model, enc=False):
