@@ -182,8 +182,28 @@ def train(args, model, enc=False):
         assert os.path.exists(filenameCheckpoint), "Error: resume option was used but checkpoint was not found in folder"
         checkpoint = torch.load(filenameCheckpoint)
         start_epoch = checkpoint['epoch']
-        model.load_state_dict(checkpoint['state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer'])
+        #model.load_state_dict(checkpoint['state_dict'])
+        #optimizer.load_state_dict(checkpoint['optimizer'])
+
+        # ----------------------------------------------------------- #
+        # Load model and optimizer state for erfnet 
+        model.load_state_dict(checkpoint['state_dict'], strict=False)
+        
+        for checkpoint_group, optimizer_group in zip(checkpoint['optimizer']['param_groups'], optimizer.param_groups):
+            valid_params = []
+            
+            for checkpoint_param in checkpoint_group['params']:
+                
+                if checkpoint_param in optimizer.state:
+                    valid_params.append(checkpoint_param)
+            
+            optimizer_group['params'] = valid_params
+        
+        for key, value in checkpoint['optimizer']['state'].items():
+            if key in optimizer.state:
+                optimizer.state[key] = value
+        # ----------------------------------------------------------- #
+
         best_acc = checkpoint['best_acc']
         print("=> Loaded checkpoint at epoch {})".format(checkpoint['epoch']))
 
