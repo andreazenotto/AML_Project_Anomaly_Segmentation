@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class CrossEntropyLoss2d(torch.nn.Module):
 
     def __init__(self, weight=None):
@@ -12,7 +13,6 @@ class CrossEntropyLoss2d(torch.nn.Module):
     def forward(self, outputs, targets):
         return self.loss(torch.nn.functional.log_softmax(outputs, dim=1), targets)
     
-# --------------------------------------------------------------------------------------------------- #
 
 class IsoMaxPlusLoss(nn.Module):
     def __init__(self, entropic_scale=10.0):
@@ -27,11 +27,6 @@ class IsoMaxPlusLoss(nn.Module):
         loss = -torch.log(probabilities_at_targets).mean()
         return loss
         
-# References:
-# https://arxiv.org/pdf/2105.14399
-# https://github.com/dlmacedo/entropic-out-of-distribution-detection/blob/master/losses/isomaxplus.py
-
-# --------------------------------------------------------------------------------------------------- #
 
 class LogitNormLoss(nn.Module):
 
@@ -44,11 +39,6 @@ class LogitNormLoss(nn.Module):
         logit_norm = torch.div(outputs, norms) / self.t
         return F.cross_entropy(logit_norm, target)
     
-# References:
-# https://arxiv.org/pdf/2205.09310
-# https://github.com/hongxin001/logitnorm_ood/blob/main/common/loss_function.py
-
-# --------------------------------------------------------------------------------------------------- #
 
 class FocalLoss(nn.Module):
 
@@ -72,11 +62,6 @@ class FocalLoss(nn.Module):
         else:
             return loss
         
-# References:
-# https://paperswithcode.com/method/focal-loss
-# https://github.com/itakurah/Focal-loss-PyTorch/blob/main/focal_loss.py
-
-# --------------------------------------------------------------------------------------------------- #
 
 class CombinedLoss(nn.Module):
     def __init__(self, w1=1.0, w2=1.0, w3=1.0, w4=1.0):
