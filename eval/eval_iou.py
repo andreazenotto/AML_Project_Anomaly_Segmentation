@@ -95,6 +95,8 @@ def main(args):
             outputs = model(inputs)
         if args.loadModel == "bisenet.py":
             outputs = outputs[1]
+        if args.loadModel == "erfnet.py":
+            outputs = outputs[0]
         
         iouEvalVal.addBatch(outputs.max(1)[1].unsqueeze(1).data, labels)
 
