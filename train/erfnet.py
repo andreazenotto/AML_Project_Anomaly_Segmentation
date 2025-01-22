@@ -7,7 +7,6 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
-import losses
 
 class DownsamplerBlock (nn.Module):
     def __init__(self, ninput, noutput):
@@ -144,13 +143,9 @@ class Net(nn.Module):
             self.encoder = encoder
         self.decoder = Decoder(num_classes)
 
-        self.classifier = losses.IsoMaxPlusLossFirstPart(num_features=128, num_classes=num_classes)
-
     def forward(self, input, only_encode=False):
         if only_encode:
             return self.encoder.forward(input, predict=True)
         else:
             output = self.encoder(input)    #predict=False by default
-            logits = self.classifier.forward(output)
-            output = self.decoder.forward(output)
-            return output, logits
+            return self.decoder.forward(output)

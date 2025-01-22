@@ -105,8 +105,6 @@ def main():
             result = model(images)
         if args.loadModel == "bisenet.py":
             result = result[1]
-        if args.loadModel == "erfnet.py":
-            result = result[0]
 
         if args.void:
             anomaly_result = -result[:, 19, :, :].cpu().numpy().squeeze()
