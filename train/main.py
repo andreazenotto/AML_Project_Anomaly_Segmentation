@@ -256,9 +256,11 @@ def train(args, model, enc=False):
             if args.model == "bisenet":
                 outputs = outputs[1]
             if args.model == "erfnet":
+                outputs = outputs[0]
                 if args.loss == "eim":
                     loss = criterion(outputs[1], targets[:, 0])
                 else:
+                    outputs
                     loss = criterion(outputs[0], targets[:, 0])
             else:
                 loss = criterion(outputs, targets[:, 0])
@@ -328,6 +330,7 @@ def train(args, model, enc=False):
             if args.model == "bisenet":
                 outputs = outputs[1]
             if args.model == "erfnet":
+                outputs = outputs[0]
                 if args.loss == "eim":
                     loss = criterion(outputs[1], targets[:, 0])
                 else:
