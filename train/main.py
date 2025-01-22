@@ -319,7 +319,13 @@ def train(args, model, enc=False):
 
             if args.model == "bisenet":
                 outputs = outputs[1]
-            loss = criterion(outputs, targets[:, 0])
+            if args.model == "erfnet":
+                if args.loss == "eim":
+                    loss = criterion(outputs[1], targets[:, 0])
+                else:
+                    loss = criterion(outputs[0], targets[:, 0])
+            else:
+                loss = criterion(outputs, targets[:, 0])
             epoch_loss_val.append(loss.item())
             time_val.append(time.time() - start_time)
 
