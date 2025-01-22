@@ -143,9 +143,9 @@ def train(args, model, enc=False):
     elif args.loss == "fl": # Focal Loss
         criterion = FocalLoss()
     elif args.loss == "mixeim": # Enhanced Isotropy Maximization Loss + Cross Entropy Loss + Focal Loss
-        criterion = CombinedLoss(0, 1/3, 1/3, 1/3)
-    elif args.loss == "mixln": # Logit Normalization Loss + Cross Entropy Loss + Focal Loss
         criterion = CombinedLoss(1/3, 0, 1/3, 1/3)
+    elif args.loss == "mixln": # Logit Normalization Loss + Cross Entropy Loss + Focal Loss
+        criterion = CombinedLoss(0, 1/3, 1/3, 1/3)
     elif args.loss == "mixall": # Enhanced Isotropy Maximization Loss + Logit Normalization Loss + Cross Entropy Loss + Focal Loss
         criterion = CombinedLoss()
     else: # Cross Entropy Loss
