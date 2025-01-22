@@ -252,9 +252,17 @@ def train(args, model, enc=False):
             #print("targets", np.unique(targets[:, 0].cpu().data.numpy()))
 
             optimizer.zero_grad()
+
             if args.model == "bisenet":
                 outputs = outputs[1]
-            loss = criterion(outputs, targets[:, 0])
+            if args.model == "erfnet":
+                if args.loss == "eim":
+                    loss = criterion(outputs[1], targets[:, 0])
+                else:
+                    loss = criterion(outputs[0], targets[:, 0])
+            else:
+                loss = criterion(outputs, targets[:, 0])
+
             loss.backward()
             optimizer.step()
 
