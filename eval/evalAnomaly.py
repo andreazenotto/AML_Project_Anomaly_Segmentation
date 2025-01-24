@@ -134,10 +134,7 @@ def main():
         ood_gts = np.array(mask)
 
         if "RoadAnomaly" in pathGT:
-            if "RoadAnomaly21" in pathGT:
-                ood_gts = np.where((ood_gts==255), 1, ood_gts)
-            else:
-                ood_gts = np.where((ood_gts==2), 1, ood_gts)
+            ood_gts = np.where((ood_gts==2), 1, ood_gts)
         if "FS" in pathGT:
             ood_gts = np.where((ood_gts==255), 1, ood_gts)
 
