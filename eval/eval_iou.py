@@ -41,8 +41,8 @@ def main(args):
     modelpath = 'AML_Project_Anomaly_Segmentation/eval/' + args.loadModel
     weightspath = args.loadDir + args.loadWeights
 
-    print ("Loading model: " + modelpath)
-    print ("Loading weights: " + weightspath)
+    # print ("Loading model: " + modelpath)
+    # print ("Loading weights: " + weightspath)
 
     model_file = importlib.import_module(args.loadModel[:-3])
     model = model_file.Net(NUM_CLASSES)
@@ -66,8 +66,8 @@ def main(args):
                 own_state[name].copy_(param)
         return model
 
-    model = load_my_state_dict(model, torch.load(weightspath, map_location=lambda storage, loc: storage))
-    print ("Model and weights LOADED successfully")
+    model = load_my_state_dict(model, torch.load(weightspath, map_location=lambda storage, loc: storage, weights_only=False))
+    # print ("Model and weights LOADED successfully")
 
 
     model.eval()
@@ -112,7 +112,7 @@ def main(args):
 
         filenameSave = filename[0].split("leftImg8bit/")[1] 
 
-        print (step, filenameSave)
+        # print (step, filenameSave)
 
 
     iouVal, iou_classes = iouEvalVal.getIoU()

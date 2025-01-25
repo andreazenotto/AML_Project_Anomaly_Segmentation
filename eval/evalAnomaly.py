@@ -8,21 +8,9 @@ import numpy as np
 import importlib
 import os.path as osp
 from argparse import ArgumentParser
+from ood_metrics import fpr_at_95_tpr, calc_metrics, plot_roc, plot_pr,plot_barcode
 from sklearn.metrics import roc_auc_score, roc_curve, auc, precision_recall_curve, average_precision_score
-
-def fpr_at_95_tpr(preds, labels, pos_label=1):
-    fpr, tpr, _ = roc_curve(labels, preds, pos_label=pos_label)
-
-    if all(tpr < 0.95):
-        # No threshold allows TPR >= 0.95
-        return 0
-    elif all(tpr >= 0.95):
-        # All thresholds allow TPR >= 0.95, so find lowest possible FPR
-        idxs = [i for i, x in enumerate(tpr) if x >= 0.95]
-        return min(map(lambda idx: fpr[idx], idxs))
-    else:
-        # Linear interp between values to get FPR at TPR == 0.95
-        return np.interp(0.95, tpr, fpr)
+from torchvision.transforms import Compose, ToTensor, Resize
 
 seed = 42
 
@@ -69,8 +57,8 @@ def main():
     modelpath = 'AML_Project_Anomaly_Segmentation/eval/' + args.loadModel
     weightspath = args.loadDir + args.loadWeights
 
-    print ("Loading model: " + modelpath)
-    print ("Loading weights: " + weightspath)
+    # print ("Loading model: " + modelpath)
+    # print ("Loading weights: " + weightspath)
 
     model_file = importlib.import_module(args.loadModel[:-3])
     model = model_file.Net(NUM_CLASSES)
@@ -93,14 +81,20 @@ def main():
                 own_state[name].copy_(param)
         return model
 
-    model = load_my_state_dict(model, torch.load(weightspath, map_location=lambda storage, loc: storage))
-    print ("Model and weights LOADED successfully")
+    model = load_my_state_dict(model, torch.load(weightspath, map_location=lambda storage, loc: storage, weights_only=False))
+    # print ("Model and weights LOADED successfully")
     model.eval()
+
+    import torchvision.transforms as T
+
+    # Preprocessing
+    image_transform = Compose([Resize((512, 1024), Image.BILINEAR), ToTensor()])
+    target_transform = Compose([Resize((512, 1024), Image.NEAREST)])
     
     for path in glob.glob(os.path.expanduser(str(args.input[0]))):
         # print(path)
-        images = torch.from_numpy(np.array(Image.open(path).convert('RGB'))).unsqueeze(0).float()
-        images = images.permute(0,3,1,2)
+        images = image_transform((Image.open(path).convert('RGB'))).unsqueeze(0).float().cuda()
+        
         with torch.no_grad():
             result = model(images)
         if args.loadModel == "bisenet.py":
@@ -131,7 +125,7 @@ def main():
            pathGT = pathGT.replace("jpg", "png")  
 
         mask = Image.open(pathGT)
-        ood_gts = np.array(mask)
+        ood_gts = np.array(target_transform(mask))
 
         if "RoadAnomaly" in pathGT:
             ood_gts = np.where((ood_gts==2), 1, ood_gts)
@@ -163,8 +157,8 @@ def main():
     val_out = np.concatenate((ind_out, ood_out))
     val_label = np.concatenate((ind_label, ood_label))
 
-    print("val_label:", val_label)
-    print("val_out:", val_out)
+    # print("val_label:", val_label)
+    # print("val_out:", val_out)
 
     prc_auc = average_precision_score(val_label, val_out)
     fpr = fpr_at_95_tpr(val_out, val_label)
