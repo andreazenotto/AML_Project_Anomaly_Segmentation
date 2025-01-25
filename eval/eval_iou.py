@@ -98,18 +98,6 @@ def main(args):
         
         iouEvalVal.addBatch(outputs.max(1)[1].unsqueeze(1).data, labels)
 
-        # if args.method == 'msp':
-        #     outputs /= args.temp
-        #     softmax_outputs = F.softmax(outputs, dim=1)
-        #     iouEvalVal.addBatch(softmax_outputs.max(1)[1].unsqueeze(1).data, labels)
-        # elif args.method == 'ml':
-        #     iouEvalVal.addBatch(torch.max(outputs, dim=1)[1].unsqueeze(1).data, labels)
-        # elif args.method == 'me':
-        #     probs = torch.nn.functional.softmax(outputs, dim=1)
-        #     log_probs = torch.log(probs + 1e-8)
-        #     entropy = torch.sum(probs * log_probs, dim=1, keepdim=True)
-        #     iouEvalVal.addBatch(entropy.max(1)[1].unsqueeze(1).data, labels)
-
         filenameSave = filename[0].split("leftImg8bit/")[1] 
 
         # print (step, filenameSave)
