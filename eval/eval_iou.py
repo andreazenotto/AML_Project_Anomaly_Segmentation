@@ -94,7 +94,7 @@ def main(args):
         with torch.no_grad():
             outputs = model(inputs)
         if args.loadModel == "bisenet.py":
-            outputs = outputs[1]
+            outputs = outputs[0]
         
         iouEvalVal.addBatch(outputs.max(1)[1].unsqueeze(1).data, labels)
 
