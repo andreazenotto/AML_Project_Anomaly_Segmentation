@@ -3,12 +3,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class CrossEntropyLoss2d(torch.nn.Module):
+class CrossEntropyLoss(torch.nn.Module):
 
     def __init__(self, weight=None):
         super().__init__()
 
-        self.loss = torch.nn.NLLLoss2d(weight)
+        self.loss = torch.nn.NLLLoss(weight)
 
     def forward(self, outputs, targets):
         return self.loss(torch.nn.functional.log_softmax(outputs, dim=1), targets)
@@ -69,7 +69,7 @@ class CombinedLoss(nn.Module):
         self.iso_max = IsoMaxPlusLoss()
         self.logit_norm = LogitNormLoss()
         self.focal_loss = FocalLoss()
-        self.cross_entropy_loss = CrossEntropyLoss2d()
+        self.cross_entropy_loss = CrossEntropyLoss()
         
         # Weights for each loss
         self.w1 = w1
