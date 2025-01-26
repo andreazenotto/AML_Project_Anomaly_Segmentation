@@ -98,7 +98,7 @@ def main():
         with torch.no_grad():
             result = model(images)
         if args.loadModel == "bisenet.py":
-            result = result[0]
+            result = result[1]
 
         if args.void:
             anomaly_result = -result[:, 19, :, :].cpu().numpy().squeeze()
