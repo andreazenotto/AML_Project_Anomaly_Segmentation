@@ -101,6 +101,7 @@ def train(args, model, enc=False):
     loader_val = DataLoader(dataset_val, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=False)
 
     weight = compute_class_weights(loader, NUM_CLASSES)
+    weight = torch.from_numpy(weight).float()
 
     if args.cuda:
         weight = weight.cuda()
