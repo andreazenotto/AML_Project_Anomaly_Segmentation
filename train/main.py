@@ -161,16 +161,12 @@ def train(args, model, enc=False):
         criterion = LogitNormLoss()
     elif args.loss == "fl": # Focal Loss
         criterion = FocalLoss()
-    elif args.loss == "eimce": # Enhanced Isotropy Maximization Loss + Cross Entropy Loss
-        criterion = CombinedLoss(1/2, 0, 0, 1/2)
-    elif args.loss == "eimfl": # Enhanced Isotropy Maximization Loss + Focal Loss
-        criterion = CombinedLoss(1/2, 0, 1/2, 0)
     elif args.loss == "mixeim": # Enhanced Isotropy Maximization Loss + Cross Entropy Loss + Focal Loss
-        criterion = CombinedLoss(1/3, 0, 1/3, 1/3)
+        criterion = CombinedLoss(1/3, 0, 1/3, 1/3, weight)
     elif args.loss == "mixln": # Logit Normalization Loss + Cross Entropy Loss + Focal Loss
-        criterion = CombinedLoss(0, 1/3, 1/3, 1/3)
+        criterion = CombinedLoss(0, 1/3, 1/3, 1/3, weight)
     elif args.loss == "mixall": # Enhanced Isotropy Maximization Loss + Logit Normalization Loss + Cross Entropy Loss + Focal Loss
-        criterion = CombinedLoss()
+        criterion = CombinedLoss(1/4, 1/4, 1/4, 1/4, weight)
     else: # Cross Entropy Loss
         criterion = CrossEntropyLoss(weight)
 

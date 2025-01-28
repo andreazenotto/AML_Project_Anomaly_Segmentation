@@ -64,12 +64,12 @@ class FocalLoss(nn.Module):
 
 
 class CombinedLoss(nn.Module):
-    def __init__(self, w1=0.25, w2=0.25, w3=0.25, w4=0.25):
+    def __init__(self, w1, w2, w3, w4, weight):
         super(CombinedLoss, self).__init__()
         self.iso_max = IsoMaxPlusLoss()
         self.logit_norm = LogitNormLoss()
         self.focal_loss = FocalLoss()
-        self.cross_entropy_loss = CrossEntropyLoss()
+        self.cross_entropy_loss = CrossEntropyLoss(weight)
         
         # Weights for each loss
         self.w1 = w1
