@@ -1,16 +1,16 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import os
-import cv2
 import glob
 import torch
 import random
 from PIL import Image
 import numpy as np
-from erfnet import ERFNet
+import importlib
 import os.path as osp
 from argparse import ArgumentParser
 from ood_metrics import fpr_at_95_tpr, calc_metrics, plot_roc, plot_pr,plot_barcode
 from sklearn.metrics import roc_auc_score, roc_curve, auc, precision_recall_curve, average_precision_score
+from torchvision.transforms import Compose, ToTensor, Resize
 
 seed = 42
 
@@ -29,12 +29,12 @@ def main():
     parser = ArgumentParser()
     parser.add_argument(
         "--input",
-        default="/home/shyam/Mask2Former/unk-eval/RoadObsticle21/images/*.webp",
+        default="AML_Project_Anomaly_Segmentation/datasets/RoadAnomaly21/images/*.png",
         nargs="+",
         help="A list of space separated input images; "
         "or a single glob pattern such as 'directory/*.jpg'",
     )  
-    parser.add_argument('--loadDir',default="../trained_models/")
+    parser.add_argument('--loadDir',default="AML_Project_Anomaly_Segmentation/trained_models/")
     parser.add_argument('--loadWeights', default="erfnet_pretrained.pth")
     parser.add_argument('--loadModel', default="erfnet.py")
     parser.add_argument('--subset', default="val")  #can be val or train (must have labels)
@@ -42,6 +42,10 @@ def main():
     parser.add_argument('--num-workers', type=int, default=4)
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--cpu', action='store_true')
+    parser.add_argument('--method', default="msp")
+    parser.add_argument('--temp', type=float, default=1)
+    parser.add_argument('--void', action='store_true')
+    
     args = parser.parse_args()
     anomaly_score_list = []
     ood_gts_list = []
@@ -50,13 +54,14 @@ def main():
         open('results.txt', 'w').close()
     file = open('results.txt', 'a')
 
-    modelpath = args.loadDir + args.loadModel
+    modelpath = 'AML_Project_Anomaly_Segmentation/eval/' + args.loadModel
     weightspath = args.loadDir + args.loadWeights
 
-    print ("Loading model: " + modelpath)
-    print ("Loading weights: " + weightspath)
+    # print ("Loading model: " + modelpath)
+    # print ("Loading weights: " + weightspath)
 
-    model = ERFNet(NUM_CLASSES)
+    model_file = importlib.import_module(args.loadModel[:-3])
+    model = model_file.Net(NUM_CLASSES)
 
     if (not args.cpu):
         model = torch.nn.DataParallel(model).cuda()
@@ -67,6 +72,8 @@ def main():
             if name not in own_state:
                 if name.startswith("module."):
                     own_state[name.split("module.")[-1]].copy_(param)
+                elif args.loadModel != "erfnet.py":
+                    own_state["module."+name].copy_(param)
                 else:
                     print(name, " not loaded")
                     continue
@@ -74,39 +81,54 @@ def main():
                 own_state[name].copy_(param)
         return model
 
-    model = load_my_state_dict(model, torch.load(weightspath, map_location=lambda storage, loc: storage))
-    print ("Model and weights LOADED successfully")
+    model = load_my_state_dict(model, torch.load(weightspath, map_location=lambda storage, loc: storage, weights_only=False))
+    # print ("Model and weights LOADED successfully")
     model.eval()
+
+    import torchvision.transforms as T
+
+    # Preprocessing
+    image_transform = Compose([Resize((512, 1024), Image.BILINEAR), ToTensor()])
+    target_transform = Compose([Resize((512, 1024), Image.NEAREST)])
     
     for path in glob.glob(os.path.expanduser(str(args.input[0]))):
-        print(path)
-        images = torch.from_numpy(np.array(Image.open(path).convert('RGB'))).unsqueeze(0).float()
-        images = images.permute(0,3,1,2)
+        # print(path)
+        images = image_transform((Image.open(path).convert('RGB'))).unsqueeze(0).float().cuda()
+        
         with torch.no_grad():
             result = model(images)
-        anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)            
+        if args.loadModel == "bisenet.py":
+            result = result[1]
+
+        if args.void:
+            anomaly_result = -result[:, 19, :, :].cpu().numpy().squeeze()
+        elif args.method == 'msp':
+            result /= args.temp
+            softmax_probs = torch.nn.functional.softmax(result, dim=1) # Softmax sulle predizioni del modello
+            msp = torch.max(softmax_probs, dim=1)[0].cpu().numpy().squeeze() # Calcolo MSP
+            anomaly_result = 1.0 - msp # Anomaly score basato su MSP
+        elif args.method == 'ml':
+            max_logit, _ = torch.max(result, dim=1) # computing max logit for each pixel
+            anomaly_result = -max_logit.cpu().numpy().squeeze() # lower logits to higher anomaly 
+        elif args.method == 'me':
+            probs = torch.nn.functional.softmax(result, dim=1)
+            log_probs = torch.log(probs + 1e-8)
+            entropy = -torch.sum(probs * log_probs, dim=1)
+            anomaly_result = entropy.data.cpu().numpy().squeeze()
+
         pathGT = path.replace("images", "labels_masks")                
         if "RoadObsticle21" in pathGT:
            pathGT = pathGT.replace("webp", "png")
-        if "fs_static" in pathGT:
+        if "FS_Static" in pathGT:
            pathGT = pathGT.replace("jpg", "png")                
         if "RoadAnomaly" in pathGT:
            pathGT = pathGT.replace("jpg", "png")  
 
         mask = Image.open(pathGT)
-        ood_gts = np.array(mask)
+        ood_gts = np.array(target_transform(mask))
 
         if "RoadAnomaly" in pathGT:
             ood_gts = np.where((ood_gts==2), 1, ood_gts)
-        if "LostAndFound" in pathGT:
-            ood_gts = np.where((ood_gts==0), 255, ood_gts)
-            ood_gts = np.where((ood_gts==1), 0, ood_gts)
-            ood_gts = np.where((ood_gts>1)&(ood_gts<201), 1, ood_gts)
-
-        if "Streethazard" in pathGT:
-            ood_gts = np.where((ood_gts==14), 255, ood_gts)
-            ood_gts = np.where((ood_gts<20), 0, ood_gts)
-            ood_gts = np.where((ood_gts==255), 1, ood_gts)
 
         if 1 not in np.unique(ood_gts):
             continue              
@@ -132,6 +154,9 @@ def main():
     
     val_out = np.concatenate((ind_out, ood_out))
     val_label = np.concatenate((ind_label, ood_label))
+
+    # print("val_label:", val_label)
+    # print("val_out:", val_out)
 
     prc_auc = average_precision_score(val_label, val_out)
     fpr = fpr_at_95_tpr(val_out, val_label)

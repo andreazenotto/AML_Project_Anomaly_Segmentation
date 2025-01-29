@@ -28,6 +28,8 @@ from iouEval import iouEval, getColorEntry
 
 from shutil import copyfile
 
+from losses import CrossEntropyLoss, IsoMaxPlusLoss, LogitNormLoss, FocalLoss, CombinedLoss
+
 NUM_CHANNELS = 3
 NUM_CLASSES = 20 #pascal=22, cityscapes=20
 
@@ -69,25 +71,23 @@ class MyCoTransform(object):
         target = Relabel(255, 19)(target)
 
         return input, target
+    
+
+def compute_class_weights(dataloader, num_classes, c=1.02):
+    class_count = 0
+    total = 0
+    for _, label in dataloader:
+        label = label.cpu().numpy()
+        flat_label = label.flatten()
+        class_count += np.bincount(flat_label, minlength=num_classes)
+        total += flat_label.size
+    
+    propensity_score = class_count / total
+    class_weights = 1 / (np.log(c + propensity_score))
+    return class_weights
 
 
-class CrossEntropyLoss2d(torch.nn.Module):
-
-    def __init__(self, weight=None):
-        super().__init__()
-
-        self.loss = torch.nn.NLLLoss2d(weight)
-
-    def forward(self, outputs, targets):
-        return self.loss(torch.nn.functional.log_softmax(outputs, dim=1), targets)
-
-
-def train(args, model, enc=False):
-    best_acc = 0
-
-    #TODO: calculate weights by processing dataset histogram (now its being set by hand from the torch values)
-    #create a loder to run all images and calculate histogram of labels, then create weight array using class balancing
-
+def get_class_weights(enc):
     weight = torch.ones(NUM_CLASSES)
     if (enc):
         weight[0] = 2.3653597831726	
@@ -129,8 +129,12 @@ def train(args, model, enc=False):
         weight[16] = 10.289801597595	
         weight[17] = 10.405355453491	
         weight[18] = 10.138095855713	
-
     weight[19] = 0
+    return weight
+
+
+def train(args, model, enc=False):
+    best_acc = 0
 
     assert os.path.exists(args.datadir), "Error: datadir (dataset directory) could not be loaded"
 
@@ -142,12 +146,33 @@ def train(args, model, enc=False):
     loader = DataLoader(dataset_train, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=True)
     loader_val = DataLoader(dataset_val, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=False)
 
+    # weight = compute_class_weights(loader, NUM_CLASSES)
+    # weight = torch.from_numpy(weight).float()
+
+    # REMOVE THIS AFTER TRAIN WITH LOSS
+    weight = get_class_weights(enc)
+
     if args.cuda:
         weight = weight.cuda()
-    criterion = CrossEntropyLoss2d(weight)
+    
+    if args.loss == "eim": # Enhanced Isotropy Maximization Loss
+        criterion = IsoMaxPlusLoss()
+    elif args.loss == "ln": # Logit Normalization Loss
+        criterion = LogitNormLoss()
+    elif args.loss == "fl": # Focal Loss
+        criterion = FocalLoss()
+    elif args.loss == "mixeim": # Enhanced Isotropy Maximization Loss + Cross Entropy Loss + Focal Loss
+        criterion = CombinedLoss(1/3, 0, 1/3, 1/3, weight)
+    elif args.loss == "mixln": # Logit Normalization Loss + Cross Entropy Loss + Focal Loss
+        criterion = CombinedLoss(0, 1/3, 1/3, 1/3, weight)
+    elif args.loss == "mixall": # Enhanced Isotropy Maximization Loss + Logit Normalization Loss + Cross Entropy Loss + Focal Loss
+        criterion = CombinedLoss(1/4, 1/4, 1/4, 1/4, weight)
+    else: # Cross Entropy Loss
+        criterion = CrossEntropyLoss(weight)
+
     print(type(criterion))
 
-    savedir = f'../save/{args.savedir}'
+    savedir = args.savedir
 
     if (enc):
         automated_log_path = savedir + "/automated_log_encoder.txt"
@@ -180,13 +205,33 @@ def train(args, model, enc=False):
         assert os.path.exists(filenameCheckpoint), "Error: resume option was used but checkpoint was not found in folder"
         checkpoint = torch.load(filenameCheckpoint)
         start_epoch = checkpoint['epoch']
-        model.load_state_dict(checkpoint['state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer'])
+        #model.load_state_dict(checkpoint['state_dict'])
+        #optimizer.load_state_dict(checkpoint['optimizer'])
+
+        # ----------------------------------------------------------- #
+        # Load model and optimizer state for erfnet 
+        model.load_state_dict(checkpoint['state_dict'], strict=False)
+        
+        for checkpoint_group, optimizer_group in zip(checkpoint['optimizer']['param_groups'], optimizer.param_groups):
+            valid_params = []
+            
+            for checkpoint_param in checkpoint_group['params']:
+                
+                if checkpoint_param in optimizer.state:
+                    valid_params.append(checkpoint_param)
+            
+            optimizer_group['params'] = valid_params
+        
+        for key, value in checkpoint['optimizer']['state'].items():
+            if key in optimizer.state:
+                optimizer.state[key] = value
+        # ----------------------------------------------------------- #
+
         best_acc = checkpoint['best_acc']
         print("=> Loaded checkpoint at epoch {})".format(checkpoint['epoch']))
 
     #scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.5) # set up scheduler     ## scheduler 1
-    lambda1 = lambda epoch: pow((1-((epoch-1)/args.num_epochs)),0.9)  ## scheduler 2
+    lambda1 = lambda epoch: pow((1-((epoch-1)/args.tot_num_epochs)),0.9)  ## scheduler 2
     scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda1)                             ## scheduler 2
 
     if args.visualize and args.steps_plot > 0:
@@ -230,11 +275,16 @@ def train(args, model, enc=False):
             #print("targets", np.unique(targets[:, 0].cpu().data.numpy()))
 
             optimizer.zero_grad()
+
+            if args.model == "bisenet":
+                outputs = outputs[1]
+            
             loss = criterion(outputs, targets[:, 0])
+
             loss.backward()
             optimizer.step()
 
-            epoch_loss.append(loss.data[0])
+            epoch_loss.append(loss.item())
             time_train.append(time.time() - start_time)
 
             if (doIouTrain):
@@ -293,8 +343,12 @@ def train(args, model, enc=False):
             targets = Variable(labels, volatile=True)
             outputs = model(inputs, only_encode=enc) 
 
+            if args.model == "bisenet":
+                outputs = outputs[1]
+            
             loss = criterion(outputs, targets[:, 0])
-            epoch_loss_val.append(loss.data[0])
+
+            epoch_loss_val.append(loss.item())
             time_val.append(time.time() - start_time)
 
 
@@ -398,10 +452,11 @@ def main(args):
         myfile.write(str(args))
 
     #Load Model
-    assert os.path.exists(args.model + ".py"), "Error: model definition not found"
+    model_dir = "AML_Project_Anomaly_Segmentation/train/"
+    assert os.path.exists(model_dir + args.model + ".py"), "Error: model definition not found"
     model_file = importlib.import_module(args.model)
     model = model_file.Net(NUM_CLASSES)
-    copyfile(args.model + ".py", savedir + '/' + args.model + ".py")
+    copyfile(model_dir + args.model + ".py", savedir + '/' + args.model + ".py")
     
     if args.cuda:
         model = torch.nn.DataParallel(model).cuda()
@@ -487,7 +542,7 @@ if __name__ == '__main__':
     parser.add_argument('--state')
 
     parser.add_argument('--port', type=int, default=8097)
-    parser.add_argument('--datadir', default=os.getenv("HOME") + "/datasets/cityscapes/")
+    parser.add_argument('--datadir', default="AML_Project_Anomaly_Segmentation/datasets/cityscapes/")
     parser.add_argument('--height', type=int, default=512)
     parser.add_argument('--num-epochs', type=int, default=150)
     parser.add_argument('--num-workers', type=int, default=4)
@@ -503,5 +558,9 @@ if __name__ == '__main__':
     parser.add_argument('--iouTrain', action='store_true', default=False) #recommended: False (takes more time to train otherwise)
     parser.add_argument('--iouVal', action='store_true', default=True)  
     parser.add_argument('--resume', action='store_true')    #Use this flag to load last checkpoint for training  
+    parser.add_argument('--tot-num-epochs', type=int, default=150)
+    parser.add_argument('--loss', default="ce")  #ce: Cross Entropy Loss
 
     main(parser.parse_args())
+
+# python main.py --savedir erfnet_training1 --datadir /home/datasets/cityscapes/ --decoder --pretrainedEncoder "../trained_models/erfnet_encoder_pretrained.pth.tar"
